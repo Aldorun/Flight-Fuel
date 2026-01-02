@@ -1,1 +1,256 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Flight Fuel Utils</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Icône & PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#101018">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <link rel="apple-touch-icon" href="icon-192.png"> <!-- à fournir -->
+
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      background-color: #101018;
+      color: #f7f7fb;
+    }
+    .app {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 24px 18px 44px;
+    }
+    h1 {
+      font-size: 24px;
+      margin: 0 0 18px;
+      text-align: center;
+      font-weight: 700;
+    }
+    .group-title {
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-size: 16px;
+      opacity: 0.9;
+    }
+    label {
+      font-size: 15px;
+      opacity: 0.95;
+    }
+    .row {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 14px;
+    }
+    input {
+      margin-top: 6px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #3a3a48;
+      background-color: #171725;
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    input::placeholder {
+      color: #7f7f9a;
+    }
+    input:focus {
+      outline: none;
+      border-color: #0a84ff;
+      box-shadow: 0 0 0 2px rgba(10,132,255,0.35);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+      margin-bottom: 20px;
+    }
+    button {
+      flex: 1;
+      padding: 12px 0;
+      border-radius: 12px;
+      border: none;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #btnCalc {
+      background-color: #0a84ff;
+      color: #ffffff;
+    }
+    #btnReset {
+      background-color: #2e2e3c;
+      color: #ffffff;
+    }
+    .results {
+      margin-top: 10px;
+      padding: 14px 14px 12px;
+      border-radius: 14px;
+      background-color: #181828;
+      border: 1px solid #3b3b4f;
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+    .result-label {
+      opacity: 0.9;
+    }
+    .result-value {
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .footer {
+      margin-top: 22px;
+      font-size: 13px;
+      text-align: center;
+      opacity: 0.7;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>Flight Fuel Utils</h1>
+
+  <div class="group-title">Entrées (tonnes)</div>
+  <div class="row">
+    <label for="zfw">ZFW (T)</label>
+    <input id="zfw" type="number" step="0.1" inputmode="decimal" placeholder="ex. 180.5">
+  </div>
+
+  <div class="row">
+    <label for="k">K (coef &gt; 1, 3 décimales)</label>
+    <input id="k" type="number" step="0.001" inputmode="decimal" placeholder="ex. 1.037">
+  </div>
+
+  <div class="grid-2">
+    <div class="row">
+      <label for="taxi">Taxi (T)</label>
+      <input id="taxi" type="number" step="0.1" inputmode="decimal" placeholder="ex. 0.4">
+    </div>
+    <div class="row">
+      <label for="rfl">Remaining Fuel at Landing (T)</label>
+      <input id="rfl" type="number" step="0.1" inputmode="decimal" placeholder="ex. 7.0">
+    </div>
+  </div>
+
+  <div class="row">
+    <label for="block">Block Fuel (T)</label>
+    <input id="block" type="number" step="0.1" inputmode="decimal" placeholder="ex. 25.3">
+  </div>
+
+  <div class="buttons">
+    <button id="btnCalc">Calcul</button>
+    <button id="btnReset">Reset</button>
+  </div>
+
+  <div class="results" id="resultsBox">
+    <div class="result-row">
+      <div class="result-label">Masse Atterrissage (T)</div>
+      <div class="result-value" id="mlw">–</div>
+    </div>
+    <div class="result-row">
+      <div class="result-label">Masse Décollage (T)</div>
+      <div class="result-value" id="mtow">–</div>
+    </div>
+    <div class="result-row">
+      <div class="result-label">Trip Fuel (T)</div>
+      <div class="result-value" id="trip">–</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    ZFW + RFL = MLW · MLW × K = MTOW · Trip = MTOW − MLW · Block = Taxi + Trip + RFL
+  </div>
+</div>
+
+<script>
+function parseValOrNaN(id) {
+  const raw = document.getElementById(id).value.trim().replace(',', '.');
+  return raw === '' ? NaN : parseFloat(raw);
+}
+
+function fmt1(x) {
+  if (isNaN(x)) return '–';
+  return x.toFixed(1);
+}
+
+document.getElementById('btnCalc').addEventListener('click', function () {
+  const zfw   = parseValOrNaN('zfw');
+  const k     = parseValOrNaN('k');
+  const taxi  = parseValOrNaN('taxi');
+  let   rfl   = parseValOrNaN('rfl');
+  let   block = parseValOrNaN('block');
+
+  if (isNaN(zfw) || isNaN(k) || isNaN(taxi)) {
+    alert('Renseigne au minimum ZFW, K et Taxi, puis soit RFL soit Block.');
+    return;
+  }
+
+  if (!isNaN(rfl)) {
+    const mlw  = zfw + rfl;
+    const mtow = mlw * k;
+    const trip = mtow - mlw;
+
+    if (isNaN(block)) {
+      block = taxi + trip + rfl;
+      document.getElementById('block').value = block.toFixed(1);
+    }
+
+    document.getElementById('rfl').value = rfl.toFixed(1);
+    document.getElementById('mlw').textContent  = fmt1(mlw);
+    document.getElementById('mtow').textContent = fmt1(mtow);
+    document.getElementById('trip').textContent = fmt1(trip);
+    return;
+  }
+
+  if (isNaN(rfl) && !isNaN(block)) {
+    const rflSolved = (block - taxi - zfw * (k - 1)) / k;
+    rfl = rflSolved;
+    document.getElementById('rfl').value = rfl.toFixed(1);
+
+    const mlw  = zfw + rfl;
+    const mtow = mlw * k;
+    const trip = mtow - mlw;
+
+    document.getElementById('mlw').textContent  = fmt1(mlw);
+    document.getElementById('mtow').textContent = fmt1(mtow);
+    document.getElementById('trip').textContent = fmt1(trip);
+    return;
+  }
+
+  alert('Renseigne soit RFL, soit Block (au moins l’un des deux).');
+});
+
+document.getElementById('btnReset').addEventListener('click', function () {
+  ['zfw','k','taxi','rfl','block'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  ['mlw','mtow','trip'].forEach(id => {
+    document.getElementById(id).textContent = '–';
+  });
+});
+
+// Enregistrement du service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .catch(err => console.log('SW registration failed', err));
+  });
+}
+</script>
+</body>
+</html>
 
