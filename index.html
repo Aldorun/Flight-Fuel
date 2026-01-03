@@ -222,7 +222,7 @@ function setLocked(id, locked) {
   el.classList.add(locked ? 'state-locked' : 'state-edit');
 }
 
-// 1) RFL / Block : si l’un change, on vide l’autre
+// 1) RFL / Block : si l’un change, on vide l’autre (sauf texte info)
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -235,33 +235,39 @@ function setLocked(id, locked) {
   });
 });
 
-// 2) Gérer les trois cases orange (ZFW, RFL, Block)
+// 2) Gérer les trois cases orange (ZFW, RFL, Block) et "Go to Calcul"
 const orangeIds = ['zfw', 'rfl', 'block'];
 
 orangeIds.forEach(id => {
   const el = document.getElementById(id);
+
+  // si on focus une case vide alors que les 2 autres sont remplies -> "Go to Calcul"
   el.addEventListener('focus', () => {
-    // Si ce champ est déjà rempli, on le laisse éditable.
     if (el.value !== '' && el.value !== 'Go to Calcul') return;
 
-    // Compter combien de cases orange ont déjà une valeur (hors "Go to Calcul")
     let filledCount = 0;
     orangeIds.forEach(oid => {
       const v = document.getElementById(oid).value;
       if (v !== '' && v !== 'Go to Calcul') filledCount++;
     });
 
-    // Si 2 cases orange sont déjà renseignées, bloquer la 3e
     if (filledCount >= 2 && el.value === '') {
       el.value = 'Go to Calcul';
       el.readOnly = true;
     }
   });
+
+  // si on sort du champ "Go to Calcul" sans rien faire, on le vide pour garder la lisibilité
+  el.addEventListener('blur', () => {
+    if (el.value === 'Go to Calcul') {
+      el.value = 'Go to Calcul'; // on laisse le texte tant que pas de Reset
+    }
+  });
 });
 
-// 3) si ZFW change, invalider RFL/Block/ résultats uniquement après un calcul
+// 3) si ZFW change, invalider RFL/Block/résultats uniquement après un calcul
 document.getElementById('zfw').addEventListener('input', () => {
-  if (!hasCalculated) return;   // avant le 1er calcul, ne rien effacer
+  if (!hasCalculated) return;
   document.getElementById('rfl').value   = '';
   document.getElementById('rfl').readOnly   = false;
   document.getElementById('block').value = '';
@@ -285,11 +291,9 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 
   hasCalculated = true;
 
-  // Après le premier calcul, K et Taxi sont figés
   setLocked('k', true);
   setLocked('taxi', true);
 
-  // Cas 1 : RFL donné
   if (!isNaN(rfl)) {
     const law  = zfw + rfl;
     const tow  = law * k;
@@ -307,7 +311,6 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     return;
   }
 
-  // Cas 2 : RFL vide mais Block fourni -> on résout RFL
   if (isNaN(rfl) && !isNaN(block)) {
     const rflSolved = (block - taxi - zfw * (k - 1)) / k;
     rfl = rflSolved;
