@@ -45,6 +45,8 @@
       flex-direction: column;
       margin-bottom: 14px;
     }
+
+    /* états visuels des inputs */
     input {
       margin-top: 6px;
       padding: 10px 12px;
@@ -63,18 +65,22 @@
       border-color: #0a84ff;
       box-shadow: 0 0 0 2px rgba(10,132,255,0.35);
     }
+    .state-edit {
+      border-color: #0a84ff;
+    }
+    .state-locked {
+      border-color: #2ecc71;
+      background-color: #16241b;
+    }
+    .state-result {
+      border-color: #f5c445;
+      background-color: #252020;
+    }
 
-    /* grille Taxi + RFL */
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-    }
-
-    /* champs résultat mis en valeur */
-    .result-input {
-      border-color: #f5c445;
-      background-color: #252020;
     }
 
     .buttons {
@@ -100,6 +106,7 @@
       background-color: #2e2e3c;
       color: #ffffff;
     }
+
     .results {
       margin-top: 10px;
       padding: 14px 14px 12px;
@@ -128,7 +135,6 @@
       line-height: 1.4;
     }
 
-    /* adaptation iPhone : une seule colonne sous 480px */
     @media (max-width: 480px) {
       .app {
         padding: 20px 14px 32px;
@@ -146,28 +152,28 @@
   <div class="group-title">Entrées (tonnes)</div>
   <div class="row">
     <label for="zfw">ZFW (T)</label>
-    <input id="zfw" type="number" step="0.1" inputmode="decimal" placeholder="ex. 180.5">
+    <input id="zfw" class="state-edit" type="number" step="0.1" inputmode="decimal" placeholder="ex. 180.5">
   </div>
 
   <div class="row">
     <label for="k">K (coef &gt; 1, 3 décimales)</label>
-    <input id="k" type="number" step="0.001" inputmode="decimal" placeholder="ex. 1.037">
+    <input id="k" class="state-edit" type="number" step="0.001" inputmode="decimal" placeholder="ex. 1.037">
   </div>
 
   <div class="grid-2">
     <div class="row">
       <label for="taxi">Taxi (T)</label>
-      <input id="taxi" type="number" step="0.1" inputmode="decimal" placeholder="ex. 0.4">
+      <input id="taxi" class="state-edit" type="number" step="0.1" inputmode="decimal" placeholder="ex. 0.4">
     </div>
     <div class="row">
       <label for="rfl">Remaining Fuel at Landing (T)</label>
-      <input id="rfl" class="result-input" type="number" step="0.1" inputmode="decimal" placeholder="ex. 7.0">
+      <input id="rfl" class="state-result" type="number" step="0.1" inputmode="decimal" placeholder="ex. 7.0">
     </div>
   </div>
 
   <div class="row">
     <label for="block">Block Fuel (T)</label>
-    <input id="block" class="result-input" type="number" step="0.1" inputmode="decimal" placeholder="ex. 25.3">
+    <input id="block" class="state-result" type="number" step="0.1" inputmode="decimal" placeholder="ex. 25.3">
   </div>
 
   <div class="buttons">
@@ -177,7 +183,7 @@
 
   <div class="results" id="resultsBox">
     <div class="result-row">
-      <div class="result-label">Masse Décollage (T)</div>
+      <div class="result-label">TOW (T)</div>
       <div class="result-value" id="mtow">–</div>
     </div>
     <div class="result-row">
@@ -185,13 +191,13 @@
       <div class="result-value" id="trip">–</div>
     </div>
     <div class="result-row">
-      <div class="result-label">Masse Atterrissage (T)</div>
+      <div class="result-label">LAW (T)</div>
       <div class="result-value" id="mlw">–</div>
     </div>
   </div>
 
   <div class="footer">
-    ZFW + RFL = MLW · MLW × K = MTOW · Trip = MTOW − MLW · Block = Taxi + Trip + RFL
+    ZFW + RFL = LAW · LAW × K = TOW · Trip = TOW − LAW · Block = Taxi + Trip + RFL
   </div>
 </div>
 
@@ -200,11 +206,28 @@ function parseValOrNaN(id) {
   const raw = document.getElementById(id).value.trim().replace(',', '.');
   return raw === '' ? NaN : parseFloat(raw);
 }
-
 function fmt1(x) {
   if (isNaN(x)) return '–';
   return x.toFixed(1);
 }
+function setLocked(id, locked) {
+  const el = document.getElementById(id);
+  el.readOnly = locked;
+  el.classList.remove('state-edit', 'state-locked');
+  el.classList.add(locked ? 'state-locked' : 'state-edit');
+}
+
+// logique RFL / Block : si l’un est modifié, on efface l’autre
+['rfl','block'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    const otherId = id === 'rfl' ? 'block' : 'rfl';
+    const otherEl = document.getElementById(otherId);
+    if (el.value !== '') {
+      otherEl.value = '';
+    }
+  });
+});
 
 document.getElementById('btnCalc').addEventListener('click', function () {
   const zfw   = parseValOrNaN('zfw');
@@ -218,10 +241,13 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     return;
   }
 
+  // geler ZFW, K, Taxi après un calcul réussi
+  ['zfw','k','taxi'].forEach(id => setLocked(id, true));
+
   if (!isNaN(rfl)) {
-    const mlw  = zfw + rfl;
-    const mtow = mlw * k;
-    const trip = mtow - mlw;
+    const law  = zfw + rfl;
+    const tow  = law * k;
+    const trip = tow - law;
 
     if (isNaN(block)) {
       block = taxi + trip + rfl;
@@ -229,8 +255,8 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     }
 
     document.getElementById('rfl').value = rfl.toFixed(1);
-    document.getElementById('mlw').textContent  = fmt1(mlw);
-    document.getElementById('mtow').textContent = fmt1(mtow);
+    document.getElementById('mlw').textContent  = fmt1(law);
+    document.getElementById('mtow').textContent = fmt1(tow);
     document.getElementById('trip').textContent = fmt1(trip);
     return;
   }
@@ -240,12 +266,12 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     rfl = rflSolved;
     document.getElementById('rfl').value = rfl.toFixed(1);
 
-    const mlw  = zfw + rfl;
-    const mtow = mlw * k;
-    const trip = mtow - mlw;
+    const law  = zfw + rfl;
+    const tow  = law * k;
+    const trip = tow - law;
 
-    document.getElementById('mlw').textContent  = fmt1(mlw);
-    document.getElementById('mtow').textContent = fmt1(mtow);
+    document.getElementById('mlw').textContent  = fmt1(law);
+    document.getElementById('mtow').textContent = fmt1(tow);
     document.getElementById('trip').textContent = fmt1(trip);
     return;
   }
@@ -254,8 +280,17 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 });
 
 document.getElementById('btnReset').addEventListener('click', function () {
-  ['zfw','k','taxi','rfl','block'].forEach(id => {
-    document.getElementById(id).value = '';
+  ['zfw','k','taxi'].forEach(id => setLocked(id, false));
+  ['rfl','block'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
+    el.classList.remove('state-edit','state-locked');
+    el.classList.add('state-result');
+    el.readOnly = false;
+  });
+  ['zfw','k','taxi'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
   });
   ['mlw','mtow','trip'].forEach(id => {
     document.getElementById(id).textContent = '–';
