@@ -65,17 +65,21 @@
       box-shadow: 0 0 0 2px rgba(10,132,255,0.35);
     }
 
+    /* bleu = entrées K & Taxi à figer après calcul */
     .state-edit {
       border-color: #0a84ff;
     }
+    /* jaune = variables d'ajustement (ZFW, RFL, Block) */
     .state-adjust {
       border-color: #f5c445;
       background-color: #252020;
     }
+    /* vert = K & Taxi verrouillés après calcul */
     .state-locked {
       border-color: #2ecc71;
       background-color: #16241b;
     }
+    /* vert clair = valeurs de résultat */
     .state-result-value {
       color: #7fffb0;
     }
@@ -222,52 +226,23 @@ function setLocked(id, locked) {
   el.classList.add(locked ? 'state-locked' : 'state-edit');
 }
 
-// RFL / Block : si l’un change, on vide l’autre (sauf texte info)
+// RFL / Block : si l’un change, on efface l’autre
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
     const otherId = id === 'rfl' ? 'block' : 'rfl';
     const otherEl = document.getElementById(otherId);
-    if (el.value !== '' && el.value !== 'Go to Calcul') {
+    if (el.value !== '') {
       otherEl.value = '';
-      otherEl.readOnly = false;
     }
   });
 });
 
-// Trois cases orange : ZFW, RFL, Block
-const orangeIds = ['zfw', 'rfl', 'block'];
-
-orangeIds.forEach(id => {
-  const el = document.getElementById(id);
-
-  el.addEventListener('focus', () => {
-    // si ce champ a déjà une vraie valeur, on le laisse tranquille
-    if (el.value !== '' && el.value !== 'Go to Calcul') return;
-
-    // compter les AUTRES cases orange déjà renseignées
-    let filledCount = 0;
-    orangeIds.forEach(oid => {
-      if (oid === id) return;
-      const v = document.getElementById(oid).value;
-      if (v !== '' && v !== 'Go to Calcul') filledCount++;
-    });
-
-    // si deux autres sont déjà remplies et celle-ci est vide -> message
-    if (filledCount >= 2 && (el.value === '' || el.value === 'Go to Calcul')) {
-      el.value = 'Go to Calcul';
-      el.readOnly = true;
-    }
-  });
-});
-
-// ZFW : effacer RFL/Block/résultats uniquement après un calcul
+// ZFW : après un calcul, toute modification invalide RFL, Block et les résultats
 document.getElementById('zfw').addEventListener('input', () => {
   if (!hasCalculated) return;
   document.getElementById('rfl').value   = '';
-  document.getElementById('rfl').readOnly   = false;
   document.getElementById('block').value = '';
-  document.getElementById('block').readOnly = false;
   document.getElementById('mlw').textContent  = '–';
   document.getElementById('mtow').textContent = '–';
   document.getElementById('trip').textContent = '–';
@@ -281,15 +256,17 @@ document.getElementById('btnCalc').addEventListener('click', function () {
   let   block = parseValOrNaN('block');
 
   if (isNaN(zfw) || isNaN(k) || isNaN(taxi)) {
-    alert('Renseigne au minimum ZFW, K et Taxi, puis soit RFL soit Block.');
+    alert('Renseigne ZFW, K et Taxi, puis soit RFL soit Block.');
     return;
   }
 
   hasCalculated = true;
 
+  // K et Taxi figés après premier calcul
   setLocked('k', true);
   setLocked('taxi', true);
 
+  // Cas 1 : RFL donné
   if (!isNaN(rfl)) {
     const law  = zfw + rfl;
     const tow  = law * k;
@@ -307,6 +284,7 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     return;
   }
 
+  // Cas 2 : Block donné, RFL vide -> on résout RFL
   if (isNaN(rfl) && !isNaN(block)) {
     const rflSolved = (block - taxi - zfw * (k - 1)) / k;
     rfl = rflSolved;
@@ -322,7 +300,7 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     return;
   }
 
-  alert('Renseigne soit RFL, soit Block (au moins l’un des deux).');
+  alert('Renseigne soit RFL, soit Block (une seule des deux).');
 });
 
 document.getElementById('btnReset').addEventListener('click', function () {
