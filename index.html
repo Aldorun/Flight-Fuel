@@ -46,7 +46,6 @@
       margin-bottom: 14px;
     }
 
-    /* états visuels des inputs */
     input {
       margin-top: 6px;
       padding: 10px 12px;
@@ -65,16 +64,22 @@
       outline: none;
       box-shadow: 0 0 0 2px rgba(10,132,255,0.35);
     }
-    /* bleu = entrée de base à renseigner */
+
+    /* bleu = entrée de base à renseigner (K, Taxi avant calcul) */
     .state-edit {
       border-color: #0a84ff;
     }
-    /* jaune = variable d’ajustement (RFL / Block) */
+    /* jaune = variables d'ajustement (ZFW, RFL, Block) */
     .state-adjust {
       border-color: #f5c445;
       background-color: #252020;
     }
-    /* vert pâle = résultat numérique affiché (LAW / TOW / Trip) */
+    /* vert = champ verrouillé après calcul (K, Taxi) */
+    .state-locked {
+      border-color: #2ecc71;
+      background-color: #16241b;
+    }
+    /* vert clair pour les valeurs de résultat */
     .state-result-value {
       color: #7fffb0;
     }
@@ -154,7 +159,8 @@
   <div class="group-title">Entrées (tonnes)</div>
   <div class="row">
     <label for="zfw">ZFW (T)</label>
-    <input id="zfw" class="state-edit" type="number" step="0.1" inputmode="decimal" placeholder="ex. 180.5">
+    <!-- ZFW = variable d'ajustement -->
+    <input id="zfw" class="state-adjust" type="number" step="0.1" inputmode="decimal" placeholder="ex. 180.5">
   </div>
 
   <div class="row">
@@ -212,8 +218,14 @@ function fmt1(x) {
   if (isNaN(x)) return '–';
   return x.toFixed(1);
 }
+function setLocked(id, locked) {
+  const el = document.getElementById(id);
+  el.readOnly = locked;
+  el.classList.remove('state-edit', 'state-locked');
+  el.classList.add(locked ? 'state-locked' : 'state-edit');
+}
 
-// si RFL ou Block change, vider l’autre
+// RFL / Block : si l’un change, on vide l’autre
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -227,7 +239,7 @@ function fmt1(x) {
 
 // si ZFW change, invalider RFL, Block et les résultats
 document.getElementById('zfw').addEventListener('input', () => {
-  document.getElementById('rfl').value = '';
+  document.getElementById('rfl').value   = '';
   document.getElementById('block').value = '';
   document.getElementById('mlw').textContent  = '–';
   document.getElementById('mtow').textContent = '–';
@@ -245,6 +257,10 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     alert('Renseigne au minimum ZFW, K et Taxi, puis soit RFL soit Block.');
     return;
   }
+
+  // Après le premier calcul, K et Taxi sont figés
+  setLocked('k', true);
+  setLocked('taxi', true);
 
   // Cas 1 : RFL donné
   if (!isNaN(rfl)) {
@@ -284,10 +300,19 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 });
 
 document.getElementById('btnReset').addEventListener('click', function () {
+  // réinitialiser champs texte
   ['zfw','k','taxi','rfl','block'].forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
+    el.readOnly = false;
   });
+  // remettre les classes
+  document.getElementById('zfw').className   = 'state-adjust';
+  document.getElementById('rfl').className   = 'state-adjust';
+  document.getElementById('block').className = 'state-adjust';
+  document.getElementById('k').className     = 'state-edit';
+  document.getElementById('taxi').className  = 'state-edit';
+
   ['mlw','mtow','trip'].forEach(id => {
     document.getElementById(id).textContent = '–';
   });
