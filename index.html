@@ -56,25 +56,27 @@
       color: #ffffff;
       font-size: 18px;
       font-weight: 600;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
     }
     input::placeholder {
       color: #7f7f9a;
     }
     input:focus {
       outline: none;
-      border-color: #0a84ff;
       box-shadow: 0 0 0 2px rgba(10,132,255,0.35);
     }
+    /* bleu = entrée de base à renseigner */
     .state-edit {
       border-color: #0a84ff;
     }
-    .state-locked {
-      border-color: #2ecc71;
-      background-color: #16241b;
-    }
-    .state-result {
+    /* jaune = variable d’ajustement (RFL / Block) */
+    .state-adjust {
       border-color: #f5c445;
       background-color: #252020;
+    }
+    /* vert pâle = résultat numérique affiché (LAW / TOW / Trip) */
+    .state-result-value {
+      color: #7fffb0;
     }
 
     .grid-2 {
@@ -167,13 +169,13 @@
     </div>
     <div class="row">
       <label for="rfl">Remaining Fuel at Landing (T)</label>
-      <input id="rfl" class="state-result" type="number" step="0.1" inputmode="decimal" placeholder="ex. 7.0">
+      <input id="rfl" class="state-adjust" type="number" step="0.1" inputmode="decimal" placeholder="ex. 7.0">
     </div>
   </div>
 
   <div class="row">
     <label for="block">Block Fuel (T)</label>
-    <input id="block" class="state-result" type="number" step="0.1" inputmode="decimal" placeholder="ex. 25.3">
+    <input id="block" class="state-adjust" type="number" step="0.1" inputmode="decimal" placeholder="ex. 25.3">
   </div>
 
   <div class="buttons">
@@ -184,15 +186,15 @@
   <div class="results" id="resultsBox">
     <div class="result-row">
       <div class="result-label">TOW (T)</div>
-      <div class="result-value" id="mtow">–</div>
+      <div class="result-value state-result-value" id="mtow">–</div>
     </div>
     <div class="result-row">
       <div class="result-label">Trip Fuel (T)</div>
-      <div class="result-value" id="trip">–</div>
+      <div class="result-value state-result-value" id="trip">–</div>
     </div>
     <div class="result-row">
       <div class="result-label">LAW (T)</div>
-      <div class="result-value" id="mlw">–</div>
+      <div class="result-value state-result-value" id="mlw">–</div>
     </div>
   </div>
 
@@ -210,14 +212,8 @@ function fmt1(x) {
   if (isNaN(x)) return '–';
   return x.toFixed(1);
 }
-function setLocked(id, locked) {
-  const el = document.getElementById(id);
-  el.readOnly = locked;
-  el.classList.remove('state-edit', 'state-locked');
-  el.classList.add(locked ? 'state-locked' : 'state-edit');
-}
 
-// logique RFL / Block : si l’un est modifié, on efface l’autre
+// si RFL ou Block change, vider l’autre
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -227,6 +223,15 @@ function setLocked(id, locked) {
       otherEl.value = '';
     }
   });
+});
+
+// si ZFW change, invalider RFL, Block et les résultats
+document.getElementById('zfw').addEventListener('input', () => {
+  document.getElementById('rfl').value = '';
+  document.getElementById('block').value = '';
+  document.getElementById('mlw').textContent  = '–';
+  document.getElementById('mtow').textContent = '–';
+  document.getElementById('trip').textContent = '–';
 });
 
 document.getElementById('btnCalc').addEventListener('click', function () {
@@ -241,9 +246,7 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     return;
   }
 
-  // geler ZFW, K, Taxi après un calcul réussi
-  ['zfw','k','taxi'].forEach(id => setLocked(id, true));
-
+  // Cas 1 : RFL donné
   if (!isNaN(rfl)) {
     const law  = zfw + rfl;
     const tow  = law * k;
@@ -261,6 +264,7 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     return;
   }
 
+  // Cas 2 : RFL vide mais Block fourni -> on résout RFL
   if (isNaN(rfl) && !isNaN(block)) {
     const rflSolved = (block - taxi - zfw * (k - 1)) / k;
     rfl = rflSolved;
@@ -280,15 +284,7 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 });
 
 document.getElementById('btnReset').addEventListener('click', function () {
-  ['zfw','k','taxi'].forEach(id => setLocked(id, false));
-  ['rfl','block'].forEach(id => {
-    const el = document.getElementById(id);
-    el.value = '';
-    el.classList.remove('state-edit','state-locked');
-    el.classList.add('state-result');
-    el.readOnly = false;
-  });
-  ['zfw','k','taxi'].forEach(id => {
+  ['zfw','k','taxi','rfl','block'].forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
   });
