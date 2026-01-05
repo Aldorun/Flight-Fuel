@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flight-fuel-v8';
+const CACHE_NAME = 'flight-fuel-v9';
 const ASSETS = [
   './',
   './index.html',
