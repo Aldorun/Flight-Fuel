@@ -6,144 +6,177 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
+    :root {
+      --bg: #05070a;
+      --bg-panel: #10131a;
+      --fg: #f5f7ff;
+      --fg-soft: #b4bddb;
+      --accent: #2b5cff;
+      --accent-soft: #192b62;
+      --danger: #ff5050;
+      --border: #252b3a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       padding: 1rem;
       font-family: -apple-system, system-ui, sans-serif;
-      background: #111;
-      color: #eee;
+      background: radial-gradient(circle at top, #101521 0, #05070a 55%);
+      color: var(--fg);
     }
 
     h1 {
       font-size: 1.1rem;
-      margin-bottom: 0.5rem;
+      margin: 0 0 0.4rem;
+    }
+
+    .subtitle {
+      font-size: 0.75rem;
+      color: var(--fg-soft);
+      margin-bottom: 0.8rem;
     }
 
     label {
       font-size: 0.8rem;
       display: block;
       margin-bottom: 0.15rem;
+      color: var(--fg-soft);
     }
 
     input {
       width: 100%;
-      padding: 0.35rem 0.4rem;
-      border-radius: 4px;
-      border: 1px solid #333;
-      background: #000;
-      color: #eee;
+      padding: 0.4rem 0.45rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #050811;
+      color: var(--fg);
       font-size: 0.9rem;
       -webkit-appearance: none;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(43,92,255,0.4);
     }
 
     .row {
       margin-bottom: 0.6rem;
     }
 
-    .row-small {
+    .row-2 {
       display: flex;
-      gap: 0.5rem;
+      gap: 0.6rem;
       margin-bottom: 0.6rem;
     }
 
-    .row-small .field {
+    .field {
       flex: 1;
     }
 
-    button {
-      padding: 0.4rem 0.6rem;
-      border-radius: 4px;
-      border: 1px solid #444;
-      background: #222;
-      color: #eee;
-      font-size: 0.85rem;
-    }
-
-    button:active {
-      background: #444;
+    .panel-main {
+      background: rgba(6, 9, 18, 0.96);
+      border-radius: 12px;
+      padding: 0.9rem;
+      border: 1px solid rgba(70, 86, 140, 0.55);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.7);
     }
 
     .btn-main {
       width: 100%;
-      margin-top: 0.4rem;
-      background: #2b5cff;
-      border-color: #2b5cff;
+      padding: 0.45rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid #1e3bb9;
+      background: linear-gradient(135deg, #2b5cff, #1a80ff);
+      color: #fff;
+      font-size: 0.9rem;
     }
 
     .btn-main:active {
-      background: #2448c0;
+      background: linear-gradient(135deg, #2448c0, #1860c0);
     }
 
-    .row-buttons {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.4rem;
+    .results-card {
+      margin-top: 0.7rem;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(18,23,40,0.96), rgba(7,10,20,0.98));
+      border: 1px solid rgba(70, 86, 140, 0.6);
+      padding: 0.5rem 0.55rem 0.6rem;
     }
 
-    .value-box {
-      padding: 0.4rem 0.5rem;
-      border-radius: 4px;
-      border: 1px solid #333;
-      background: #000;
-      font-size: 0.9rem;
-      display: flex;
-      justify-content: space-between;
+    .results-header {
+      font-size: 0.8rem;
+      color: var(--fg-soft);
+      margin-bottom: 0.3rem;
     }
 
-    .value-box span {
-      min-width: 3.5rem;
+    .results-row {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      column-gap: 0.35rem;
+      row-gap: 0.15rem;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .results-label {
+      color: var(--fg-soft);
+    }
+
+    .results-value {
       text-align: right;
       font-variant-numeric: tabular-nums;
-    }
-
-    /* Panneaux Limitation */
-    .panel {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: #181818;
-      border-top: 1px solid #333;
-      padding: 0.75rem;
-      box-shadow: 0 -4px 12px rgba(0,0,0,0.6);
-    }
-
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.5rem;
-    }
-
-    .panel-header-title {
       font-size: 0.9rem;
-      font-weight: 600;
     }
 
-    .panel-body {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
+    .results-value-strong {
+      font-size: 0.98rem;
+      color: #ffffff;
     }
 
-    .panel-footer {
-      margin-top: 0.6rem;
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.5rem;
+    .results-limit-input {
+      width: 100%;
+      padding: 0.25rem 0.3rem;
+      border-radius: 4px;
+      border: 1px solid #39415a;
+      background: #070b16;
+      color: var(--fg);
+      font-size: 0.8rem;
+      -webkit-appearance: none;
     }
 
-    .hidden {
-      display: none;
+    .results-limit-input:focus {
+      border-color: var(--accent);
+      box-shadow: none;
+    }
+
+    .helper-text {
+      font-size: 0.7rem;
+      color: var(--fg-soft);
+      margin-top: 0.3rem;
     }
 
     @media (min-width: 768px) {
       body {
-        max-width: 480px;
+        max-width: 520px;
         margin: 0 auto;
+        padding: 1.2rem 1.4rem;
       }
-      .row-small {
-        gap: 0.75rem;
+      h1 {
+        font-size: 1.2rem;
+      }
+      .panel-main {
+        padding: 1rem;
+      }
+      input {
+        font-size: 0.95rem;
+      }
+      .results-row {
+        font-size: 0.9rem;
       }
     }
   </style>
@@ -151,100 +184,74 @@
 
 <body>
   <h1>Masses & Fuel</h1>
+  <div class="subtitle">ZFW, Trip, TOW, LAW avec K fixe, limites TOW/LAW optionnelles</div>
 
-  <!-- Entrées principales -->
-  <div class="row">
-    <label for="zfw">ZFW (t)</label>
-    <input id="zfw" type="number" step="0.1" inputmode="decimal">
-  </div>
-
-  <div class="row">
-    <label for="rfl">RFL (t)</label>
-    <input id="rfl" type="number" step="0.1" inputmode="decimal">
-  </div>
-
-  <div class="row-small">
-    <div class="field">
-      <label for="k">K</label>
-      <input id="k" type="number" step="0.001" inputmode="decimal">
-    </div>
-    <div class="field">
-      <label for="taxi">Taxi (t)</label>
-      <input id="taxi" type="number" step="0.1" inputmode="decimal">
-    </div>
-  </div>
-
-  <div class="row">
-    <label for="block">Block Fuel (t)</label>
-    <input id="block" type="number" step="0.1" inputmode="decimal">
-  </div>
-
-  <button id="btnCalc" class="btn-main">Calculer TOW / LAW</button>
-
-  <div class="row-buttons">
-    <button id="btnTowLimit">Lim TOW</button>
-    <button id="btnLawLimit">Lim LAW</button>
-  </div>
-
-  <!-- Résultats -->
-  <div class="row" style="margin-top:0.8rem;">
-    <div class="value-box">
-      <div>TOW (t)</div>
-      <span id="towValue">0.0</span>
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="value-box">
-      <div>LAW (t)</div>
-      <span id="lawValue">0.0</span>
-    </div>
-  </div>
-
-  <!-- Panneau Limitation TOW -->
-  <div id="towLimitPanel" class="panel hidden">
-    <div class="panel-header">
-      <div class="panel-header-title">Limitation TOW</div>
-      <button id="btnTowLimitClose">✕</button>
+  <div class="panel-main">
+    <!-- Entrées principales -->
+    <div class="row">
+      <label for="zfw">ZFW (t)</label>
+      <input id="zfw" type="number" step="0.1" inputmode="decimal">
     </div>
 
-    <div class="panel-body">
-      <div>
-        <label for="towLimitInput">TOW limite (t)</label>
-        <input id="towLimitInput" type="number" step="0.1" inputmode="decimal">
+    <div class="row">
+      <label for="rfl">RFL (t)</label>
+      <input id="rfl" type="number" step="0.1" inputmode="decimal">
+    </div>
+
+    <div class="row-2">
+      <div class="field">
+        <label for="k">K</label>
+        <input id="k" type="number" step="0.001" inputmode="decimal">
       </div>
-      <!-- RFL reste géré sur l’écran principal -->
-    </div>
-
-    <div class="panel-footer">
-      <button id="btnTowLimitApply">Appliquer</button>
-    </div>
-  </div>
-
-  <!-- Panneau Limitation LAW -->
-  <div id="lawLimitPanel" class="panel hidden">
-    <div class="panel-header">
-      <div class="panel-header-title">Limitation LAW</div>
-      <button id="btnLawLimitClose">✕</button>
-    </div>
-
-    <div class="panel-body">
-      <div>
-        <label for="lawLimitInput">LAW limite (t)</label>
-        <input id="lawLimitInput" type="number" step="0.1" inputmode="decimal">
+      <div class="field">
+        <label for="taxi">Taxi (t)</label>
+        <input id="taxi" type="number" step="0.1" inputmode="decimal">
       </div>
-      <!-- RFL reste géré sur l’écran principal -->
     </div>
 
-    <div class="panel-footer">
-      <button id="btnLawLimitApply">Appliquer</button>
+    <div class="row">
+      <label for="block">Block Fuel (t)</label>
+      <input id="block" type="number" step="0.1" inputmode="decimal">
+    </div>
+
+    <button id="btnCalc" class="btn-main">Calculer masses</button>
+
+    <!-- Résultats TOW / Trip / LAW + limites -->
+    <div class="results-card">
+      <div class="results-header">Résultats</div>
+      <div class="results-row">
+        <div class="results-label">TOW (t)</div>
+        <div class="results-value results-value-strong" id="towValue">0.0</div>
+
+        <div class="results-label">TOW limit (t)</div>
+        <div>
+          <input id="towLimitInput" class="results-limit-input" type="number"
+                 step="0.1" inputmode="decimal" placeholder="optionnel">
+        </div>
+
+        <div class="results-label">Trip fuel (t)</div>
+        <div class="results-value" id="tripValue">0.0</div>
+
+        <div class="results-label">LAW (t)</div>
+        <div class="results-value results-value-strong" id="lawValue">0.0</div>
+
+        <div class="results-label">LAW limit (t)</div>
+        <div>
+          <input id="lawLimitInput" class="results-limit-input" type="number"
+                 step="0.1" inputmode="decimal" placeholder="optionnel">
+        </div>
+      </div>
+      <div class="helper-text">
+        La Trip est toujours calculée (Block − Taxi − RFL).  
+        Renseigne une limite TOW ou LAW pour ajuster ZFW et Block.
+      </div>
     </div>
   </div>
 
   <script>
-    // Utilitaire: parse avec virgule ou point
     function parseNum(val) {
-      if (typeof val !== 'string') return NaN;
+      if (val === null || val === undefined) return NaN;
+      if (typeof val !== 'string') val = String(val);
       return parseFloat(val.replace(',', '.'));
     }
 
@@ -254,22 +261,32 @@
     const taxiInput  = document.getElementById('taxi');
     const blockInput = document.getElementById('block');
 
-    const towValue = document.getElementById('towValue');
-    const lawValue = document.getElementById('lawValue');
+    const towValue  = document.getElementById('towValue');
+    const tripValue = document.getElementById('tripValue');
+    const lawValue  = document.getElementById('lawValue');
+
+    const towLimitInput = document.getElementById('towLimitInput');
+    const lawLimitInput = document.getElementById('lawLimitInput');
 
     const btnCalc = document.getElementById('btnCalc');
 
-    // Calcul standard TOW / LAW
-    btnCalc.addEventListener('click', () => {
+    // Calcul standard (comme avant) : Trip, TOW, LAW
+    function recalcStandard() {
       const zfw  = parseNum(zfwInput.value);
+      const rfl  = parseNum(rflInput.value);
       const k    = parseNum(kInput.value);
       const taxi = parseNum(taxiInput.value);
       const block= parseNum(blockInput.value);
 
-      if (isNaN(zfw) || isNaN(k) || isNaN(taxi) || isNaN(block) || k <= 0) {
-        alert('Vérifier ZFW, K, Taxi et Block.');
+      if (isNaN(zfw) || isNaN(rfl) || isNaN(k) || isNaN(taxi) || isNaN(block) || k <= 0) {
+        towValue.textContent  = '—';
+        tripValue.textContent = '—';
+        lawValue.textContent  = '—';
         return;
       }
+
+      // Trip = Block - Taxi - RFL
+      const trip = block - taxi - rfl;
 
       // TOW = ZFW + Block - Taxi
       const tow = zfw + block - taxi;
@@ -277,41 +294,30 @@
       // LAW = TOW / K
       const law = tow / k;
 
-      towValue.textContent = tow.toFixed(1);
-      lawValue.textContent = law.toFixed(1);
+      tripValue.textContent = trip.toFixed(1);
+      towValue.textContent  = tow.toFixed(1);
+      lawValue.textContent  = law.toFixed(1);
 
-      // Remise en forme
+      // Remise en forme des entrées
       zfwInput.value   = zfw.toFixed(1);
-      blockInput.value = block.toFixed(1);
+      rflInput.value   = rfl.toFixed(1);
       taxiInput.value  = taxi.toFixed(1);
+      blockInput.value = block.toFixed(1);
       kInput.value     = k.toFixed(3);
+    }
+
+    btnCalc.addEventListener('click', () => {
+      recalcStandard();
     });
 
-    // ----- Panneau Limitation TOW -----
-    const btnTowLimit      = document.getElementById('btnTowLimit');
-    const towLimitPanel    = document.getElementById('towLimitPanel');
-    const btnTowLimitClose = document.getElementById('btnTowLimitClose');
-    const towLimitInput    = document.getElementById('towLimitInput');
-    const btnTowLimitApply = document.getElementById('btnTowLimitApply');
-
-    btnTowLimit.addEventListener('click', () => {
-      towLimitInput.value = '';
-      towLimitPanel.classList.remove('hidden');
-      towLimitInput.focus();
-    });
-
-    btnTowLimitClose.addEventListener('click', () => {
-      towLimitPanel.classList.add('hidden');
-    });
-
-    btnTowLimitApply.addEventListener('click', () => {
+    // ----- Limitation TOW -----
+    function applyTowLimit() {
       const towLimit = parseNum(towLimitInput.value);
       const rfl      = parseNum(rflInput.value);
       const taxi     = parseNum(taxiInput.value);
       const k        = parseNum(kInput.value);
 
       if (isNaN(towLimit) || isNaN(rfl) || isNaN(taxi) || isNaN(k) || k <= 0) {
-        alert('Vérifier TOW limite, RFL, Taxi et K.');
         return;
       }
 
@@ -322,53 +328,37 @@
       let zfwMax = lawMax - rfl;
       if (zfwMax < 0) zfwMax = 0;
 
-      // 3) Trip = TOW_limit - LAW_max
-      const trip = towLimit - lawMax;
+      // On conserve la structure carburant standard:
+      // Trip sera recalculée ensuite par recalcStandard via Block, Taxi, RFL.
 
-      // 4) Block_new = Taxi + Trip + RFL
-      let blockNew = taxi + trip + rfl;
+      // On veut un Block_new compatible avec ce nouveau ZFW pour que TOW = TOW_limit
+      // TOW_limit = ZFW_max + Block_new - Taxi  => Block_new = TOW_limit - ZFW_max + Taxi
+      let blockNew = towLimit - zfwMax + taxi;
       if (blockNew < 0) blockNew = 0;
 
-      // Mise à jour des champs
       zfwInput.value   = zfwMax.toFixed(1);
       blockInput.value = blockNew.toFixed(1);
-      rflInput.value   = rfl.toFixed(1);
-      kInput.value     = k.toFixed(3);
 
-      // Recalcule TOW / LAW avec ces nouvelles valeurs
-      const tow = zfwMax + blockNew - taxi;
-      const law = tow / k;
-      towValue.textContent = tow.toFixed(1);
-      lawValue.textContent = law.toFixed(1);
+      recalcStandard();
+    }
 
-      towLimitPanel.classList.add('hidden');
+    // Appliquer limitation TOW quand on sort du champ ou Enter
+    towLimitInput.addEventListener('blur', applyTowLimit);
+    towLimitInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyTowLimit();
+      }
     });
 
-    // ----- Panneau Limitation LAW -----
-    const btnLawLimit      = document.getElementById('btnLawLimit');
-    const lawLimitPanel    = document.getElementById('lawLimitPanel');
-    const btnLawLimitClose = document.getElementById('btnLawLimitClose');
-    const lawLimitInput    = document.getElementById('lawLimitInput');
-    const btnLawLimitApply = document.getElementById('btnLawLimitApply');
-
-    btnLawLimit.addEventListener('click', () => {
-      lawLimitInput.value = '';
-      lawLimitPanel.classList.remove('hidden');
-      lawLimitInput.focus();
-    });
-
-    btnLawLimitClose.addEventListener('click', () => {
-      lawLimitPanel.classList.add('hidden');
-    });
-
-    btnLawLimitApply.addEventListener('click', () => {
+    // ----- Limitation LAW -----
+    function applyLawLimit() {
       const lawLimit = parseNum(lawLimitInput.value);
       const rfl      = parseNum(rflInput.value);
       const taxi     = parseNum(taxiInput.value);
       const k        = parseNum(kInput.value);
 
       if (isNaN(lawLimit) || isNaN(rfl) || isNaN(taxi) || isNaN(k) || k <= 0) {
-        alert('Vérifier LAW limite, RFL, Taxi et K.');
         return;
       }
 
@@ -379,26 +369,28 @@
       let zfwMax = lawLimit - rfl;
       if (zfwMax < 0) zfwMax = 0;
 
-      // 3) Trip = TOW_max - LAW_limit
-      const trip = towMax - lawLimit;
-
-      // 4) Block_new = Taxi + Trip + RFL
-      let blockNew = taxi + trip + rfl;
+      // TOW_max = ZFW_max + Block_new - Taxi => Block_new = TOW_max - ZFW_max + Taxi
+      let blockNew = towMax - zfwMax + taxi;
       if (blockNew < 0) blockNew = 0;
 
-      // Mise à jour des champs
       zfwInput.value   = zfwMax.toFixed(1);
       blockInput.value = blockNew.toFixed(1);
-      rflInput.value   = rfl.toFixed(1);
-      kInput.value     = k.toFixed(3);
 
-      // Recalcule TOW / LAW avec ces nouvelles valeurs
-      const tow = zfwMax + blockNew - taxi;
-      const law = tow / k;
-      towValue.textContent = tow.toFixed(1);
-      lawValue.textContent = law.toFixed(1);
+      recalcStandard();
+    }
 
-      lawLimitPanel.classList.add('hidden');
+    lawLimitInput.addEventListener('blur', applyLawLimit);
+    lawLimitInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyLawLimit();
+      }
+    });
+
+    // Option : recalcul auto quand on modifie une entrée de base
+    [zfwInput, rflInput, kInput, taxiInput, blockInput].forEach(el => {
+      el.addEventListener('change', recalcStandard);
+      el.addEventListener('blur', recalcStandard);
     });
   </script>
 </body>
