@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Flight Fuel Utils</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1">
 
   <!-- Icône & PWA -->
   <link rel="manifest" href="manifest.json">
@@ -179,6 +180,9 @@
       .result-row {
         font-size: 17px;
       }
+      input {
+        font-size: 18px; /* >=16px pour éviter le zoom auto iOS [web:283][web:292] */
+      }
     }
   </style>
 </head>
@@ -301,15 +305,13 @@ function handleLimitInputClear(el) {
   }
 }
 
-// RFL / Block : si l’un change, on efface l’autre ET les limites (dès le premier caractère)
+// RFL / Block : si l’un change, on efface l’autre ET les limites (dès le premier caractère) [web:271][web:279]
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
     const otherId = id === 'rfl' ? 'block' : 'rfl';
     const otherEl = document.getElementById(otherId);
-    // Dès qu'on touche à l'un, on vide complètement l'autre
     otherEl.value = '';
-    // On sort du mode limitation
     towLimEl.value = '';
     lawLimEl.value = '';
     zfwEl.classList.remove('state-limited');
@@ -371,7 +373,7 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     return;
   }
 
-  // Cas 2 : Block donné, RFL vide -> on résout RFL (comme avant)
+  // Cas 2 : Block donné, RFL vide -> on résout RFL
   if (isNaN(rfl) && !isNaN(block)) {
     const rflSolved = (block - taxi - zfw * (k - 1)) / k;
     rfl = rflSolved;
@@ -412,18 +414,15 @@ function applyTowLimit() {
   if (zfwMax < 0) zfwMax = 0;
 
   // 3) Block_new pour respecter TOW_limit
-  // TOW_limit = ZFW_max + Block_new - Taxi -> Block_new = TOW_limit - ZFW_max + Taxi
   let blockNew = towLimit - zfwMax + taxi;
   if (blockNew < 0) blockNew = 0;
 
   zfwEl.value   = zfwMax.toFixed(1);
   blockEl.value = blockNew.toFixed(1);
 
-  // marquer les champs impactés
   zfwEl.classList.add('state-limited');
   blockEl.classList.add('state-limited');
 
-  // recalcul standard
   document.getElementById('btnCalc').click();
 }
 
@@ -436,7 +435,8 @@ towLimEl.addEventListener('keydown', (e) => {
 });
 
 // ----- Limitation LAW -----
-// Base : LAW = TOW / K et LAW = ZFW + RFL [web:213][web:236]
+// Si LAW_limit < LAW_actuelle -> réduction ZFW max + ajustement Block.
+// Si LAW_limit > LAW_actuelle -> ZFW inchangé, Block augmenté (emport). [web:221][web:236]
 function applyLawLimit() {
   const lawLimit = parseValOrNaN('lawLimit');
   if (isNaN(lawLimit)) {
@@ -447,28 +447,36 @@ function applyLawLimit() {
   const k    = parseValOrNaN('k');
   const taxi = parseValOrNaN('taxi');
   const rfl  = parseValOrNaN('rfl');
-  if (isNaN(k) || isNaN(taxi) || isNaN(rfl) || k <= 0) return;
+  const zfw  = parseValOrNaN('zfw');
+  if (isNaN(k) || isNaN(taxi) || isNaN(rfl) || isNaN(zfw) || k <= 0) return;
 
-  // 1) TOW_max = LAW_limit * K [web:236]
-  const towMax = lawLimit * k;
+  const lawCurrent = zfw + rfl; // LAW_actuelle [web:221]
 
-  // 2) ZFW_max = LAW_limit - RFL [web:221]
-  let zfwMax = lawLimit - rfl;
-  if (zfwMax < 0) zfwMax = 0;
+  let zfwNew   = zfw;
+  let blockNew;
 
-  // 3) Block_new pour respecter TOW_max
-  // TOW_max = ZFW_max + Block_new - Taxi -> Block_new = TOW_max - ZFW_max + Taxi
-  let blockNew = towMax - zfwMax + taxi;
-  if (blockNew < 0) blockNew = 0;
+  if (lawLimit < lawCurrent) {
+    // Limitation plus faible -> réduction ZFW
+    const towMax = lawLimit * k;      // [web:236]
+    let zfwMax   = lawLimit - rfl;    // [web:221]
+    if (zfwMax < 0) zfwMax = 0;
+    zfwNew = zfwMax;
 
-  zfwEl.value   = zfwMax.toFixed(1);
+    blockNew = towMax - zfwMax + taxi;
+    if (blockNew < 0) blockNew = 0;
+  } else {
+    // Limite plus haute -> ZFW inchangé, on augmente seulement le Block
+    const towNew = lawLimit * k;      // [web:236]
+    blockNew = towNew - zfw + taxi;
+    if (blockNew < 0) blockNew = 0;
+  }
+
+  zfwEl.value   = zfwNew.toFixed(1);
   blockEl.value = blockNew.toFixed(1);
 
-  // marquer les champs impactés
   zfwEl.classList.add('state-limited');
   blockEl.classList.add('state-limited');
 
-  // recalcul standard
   document.getElementById('btnCalc').click();
 }
 
