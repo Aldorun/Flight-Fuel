@@ -181,7 +181,7 @@
         font-size: 17px;
       }
       input {
-        font-size: 18px; /* >=16px pour éviter le zoom auto iOS [web:283][web:292] */
+        font-size: 18px; /* >=16px pour limiter le zoom auto iOS [web:283][web:292] */
       }
     }
   </style>
@@ -436,7 +436,7 @@ towLimEl.addEventListener('keydown', (e) => {
 
 // ----- Limitation LAW -----
 // Si LAW_limit < LAW_actuelle -> réduction ZFW max + ajustement Block.
-// Si LAW_limit > LAW_actuelle -> ZFW inchangé, Block augmenté (emport). [web:221][web:236]
+// Si LAW_limit > LAW_actuelle -> ZFW inchangé, RFL augmenté, Block ajusté. [web:221][web:236]
 function applyLawLimit() {
   const lawLimit = parseValOrNaN('lawLimit');
   if (isNaN(lawLimit)) {
@@ -453,10 +453,11 @@ function applyLawLimit() {
   const lawCurrent = zfw + rfl; // LAW_actuelle [web:221]
 
   let zfwNew   = zfw;
+  let rflNew   = rfl;
   let blockNew;
 
   if (lawLimit < lawCurrent) {
-    // Limitation plus faible -> réduction ZFW
+    // Limitation plus faible -> réduction ZFW max
     const towMax = lawLimit * k;      // [web:236]
     let zfwMax   = lawLimit - rfl;    // [web:221]
     if (zfwMax < 0) zfwMax = 0;
@@ -464,14 +465,20 @@ function applyLawLimit() {
 
     blockNew = towMax - zfwMax + taxi;
     if (blockNew < 0) blockNew = 0;
+
   } else {
-    // Limite plus haute -> ZFW inchangé, on augmente seulement le Block
+    // Limite plus haute -> ZFW inchangé, on augmente RFL + Block
+    // LAW_limit = ZFW + RFL_new -> RFL_new = LAW_limit - ZFW [web:221]
+    rflNew = lawLimit - zfw;
+    if (rflNew < 0) rflNew = 0;
+
     const towNew = lawLimit * k;      // [web:236]
     blockNew = towNew - zfw + taxi;
     if (blockNew < 0) blockNew = 0;
   }
 
   zfwEl.value   = zfwNew.toFixed(1);
+  rflEl.value   = rflNew.toFixed(1);
   blockEl.value = blockNew.toFixed(1);
 
   zfwEl.classList.add('state-limited');
