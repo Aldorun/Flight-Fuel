@@ -276,42 +276,44 @@ const tripEl    = document.getElementById('trip');
 const towLimEl  = document.getElementById('towLimit');
 const lawLimEl  = document.getElementById('lawLimit');
 
-function clearLimitsOnly() {
-  towLimEl.value = '';
-  lawLimEl.value = '';
-  zfwEl.classList.remove('state-limited');
-  blockEl.classList.remove('state-limited');
-}
-
 function clearResults() {
   mtowEl.textContent = '–';
   mlwEl.textContent  = '–';
   tripEl.textContent = '–';
 }
 
-// Effacer limites + résultats + ZFW/Block quand on vide une limite
+function clearLimitsAndDerived() {
+  towLimEl.value = '';
+  lawLimEl.value = '';
+  zfwEl.value   = '';
+  blockEl.value = '';
+  zfwEl.classList.remove('state-limited');
+  blockEl.classList.remove('state-limited');
+  clearResults();
+  hasCalculated = false;
+}
+
+// Effacer limites + dérivés quand on vide une limite
 function handleLimitInputClear(el) {
   const val = el.value.trim();
   if (val === '') {
-    zfwEl.value   = '';
-    blockEl.value = '';
-    clearResults();
-    hasCalculated = false;
-    zfwEl.classList.remove('state-limited');
-    blockEl.classList.remove('state-limited');
+    clearLimitsAndDerived();
   }
 }
 
-// RFL / Block : si l’un change, on efface l’autre et les limites
+// RFL / Block : si l’un change, on efface l’autre ET les limites (dès le premier caractère)
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
     const otherId = id === 'rfl' ? 'block' : 'rfl';
     const otherEl = document.getElementById(otherId);
-    if (el.value !== '') {
-      otherEl.value = '';
-    }
-    clearLimitsOnly();
+    // Dès qu'on touche à l'un, on vide complètement l'autre
+    otherEl.value = '';
+    // On sort du mode limitation
+    towLimEl.value = '';
+    lawLimEl.value = '';
+    zfwEl.classList.remove('state-limited');
+    blockEl.classList.remove('state-limited');
   });
 });
 
@@ -320,14 +322,16 @@ zfwEl.addEventListener('input', () => {
   if (!hasCalculated) return;
   rflEl.value   = '';
   blockEl.value = '';
-  clearResults();
-  clearLimitsOnly();
+  clearLimitsAndDerived();
 });
 
-// K / Taxi / RFL / Block : si on change après une limitation, on efface les limites
+// K / Taxi / RFL / Block : si on change après une limitation, on efface les limites visuelles
 [kEl, taxiEl, rflEl, blockEl].forEach(el => {
   el.addEventListener('input', () => {
-    clearLimitsOnly();
+    towLimEl.value = '';
+    lawLimEl.value = '';
+    zfwEl.classList.remove('state-limited');
+    blockEl.classList.remove('state-limited');
   });
 });
 
