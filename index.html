@@ -84,6 +84,12 @@
       color: #7fffb0;
     }
 
+    /* champs impactés par une limitation */
+    .state-limited {
+      border-color: #ff9f1a !important;
+      background-color: #2a1e08 !important;
+    }
+
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -139,20 +145,20 @@
       color: #ffffff;
     }
 
-    /* Champ de limitation à côté des résultats TOW / LAW */
+    /* Champs de limitation TOW / LAW visibles */
     .limit-input {
-      max-width: 120px;
-      padding: 6px 8px;
-      border-radius: 8px;
-      border: 1px solid #3a3a48;
-      background-color: #141420;
+      max-width: 140px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 2px solid #ff9f1a;
+      background-color: #2a1e08;
       color: #ffffff;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
     }
     .limit-input::placeholder {
-      color: #7f7f9a;
-      font-weight: 400;
+      color: #ffcf80;
+      font-weight: 500;
     }
 
     .footer {
@@ -259,7 +265,44 @@ function setLocked(id, locked) {
   el.classList.add(locked ? 'state-locked' : 'state-edit');
 }
 
-// RFL / Block : si l’un change, on efface l’autre
+const zfwEl     = document.getElementById('zfw');
+const kEl       = document.getElementById('k');
+const taxiEl    = document.getElementById('taxi');
+const rflEl     = document.getElementById('rfl');
+const blockEl   = document.getElementById('block');
+const mtowEl    = document.getElementById('mtow');
+const mlwEl     = document.getElementById('mlw');
+const tripEl    = document.getElementById('trip');
+const towLimEl  = document.getElementById('towLimit');
+const lawLimEl  = document.getElementById('lawLimit');
+
+function clearLimitsOnly() {
+  towLimEl.value = '';
+  lawLimEl.value = '';
+  zfwEl.classList.remove('state-limited');
+  blockEl.classList.remove('state-limited');
+}
+
+function clearResults() {
+  mtowEl.textContent = '–';
+  mlwEl.textContent  = '–';
+  tripEl.textContent = '–';
+}
+
+// Effacer limites + résultats + ZFW/Block quand on vide une limite
+function handleLimitInputClear(el) {
+  const val = el.value.trim();
+  if (val === '') {
+    zfwEl.value   = '';
+    blockEl.value = '';
+    clearResults();
+    hasCalculated = false;
+    zfwEl.classList.remove('state-limited');
+    blockEl.classList.remove('state-limited');
+  }
+}
+
+// RFL / Block : si l’un change, on efface l’autre et les limites
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -268,19 +311,24 @@ function setLocked(id, locked) {
     if (el.value !== '') {
       otherEl.value = '';
     }
+    clearLimitsOnly();
   });
 });
 
-// ZFW : après un calcul, toute modification invalide RFL, Block et les résultats
-document.getElementById('zfw').addEventListener('input', () => {
+// ZFW : après un calcul, toute modification invalide RFL, Block, résultats et limites
+zfwEl.addEventListener('input', () => {
   if (!hasCalculated) return;
-  document.getElementById('rfl').value   = '';
-  document.getElementById('block').value = '';
-  document.getElementById('mlw').textContent  = '–';
-  document.getElementById('mtow').textContent = '–';
-  document.getElementById('trip').textContent = '–';
-  document.getElementById('towLimit').value   = '';
-  document.getElementById('lawLimit').value   = '';
+  rflEl.value   = '';
+  blockEl.value = '';
+  clearResults();
+  clearLimitsOnly();
+});
+
+// K / Taxi / RFL / Block : si on change après une limitation, on efface les limites
+[kEl, taxiEl, rflEl, blockEl].forEach(el => {
+  el.addEventListener('input', () => {
+    clearLimitsOnly();
+  });
 });
 
 document.getElementById('btnCalc').addEventListener('click', function () {
@@ -309,13 +357,13 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 
     if (isNaN(block)) {
       block = taxi + trip + rfl; // Block = Taxi + Trip + RFL [web:221]
-      document.getElementById('block').value = block.toFixed(1);
+      blockEl.value = block.toFixed(1);
     }
 
-    document.getElementById('rfl').value = rfl.toFixed(1);
-    document.getElementById('mlw').textContent  = fmt1(law);
-    document.getElementById('mtow').textContent = fmt1(tow);
-    document.getElementById('trip').textContent = fmt1(trip);
+    rflEl.value = rfl.toFixed(1);
+    mlwEl.textContent  = fmt1(law);
+    mtowEl.textContent = fmt1(tow);
+    tripEl.textContent = fmt1(trip);
     return;
   }
 
@@ -323,15 +371,15 @@ document.getElementById('btnCalc').addEventListener('click', function () {
   if (isNaN(rfl) && !isNaN(block)) {
     const rflSolved = (block - taxi - zfw * (k - 1)) / k;
     rfl = rflSolved;
-    document.getElementById('rfl').value = rfl.toFixed(1);
+    rflEl.value = rfl.toFixed(1);
 
     const law  = zfw + rfl;
     const tow  = law * k;
     const trip = tow - law;
 
-    document.getElementById('mlw').textContent  = fmt1(law);
-    document.getElementById('mtow').textContent = fmt1(tow);
-    document.getElementById('trip').textContent = fmt1(trip);
+    mlwEl.textContent  = fmt1(law);
+    mtowEl.textContent = fmt1(tow);
+    tripEl.textContent = fmt1(trip);
     return;
   }
 
@@ -339,37 +387,44 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 });
 
 // ----- Limitation TOW -----
-// Formule de base : TOW = ZFW + Block - Taxi [web:236]
+// Formule : TOW = ZFW + Block - Taxi [web:236]
 function applyTowLimit() {
   const towLimit = parseValOrNaN('towLimit');
-  if (isNaN(towLimit)) return;
+  if (isNaN(towLimit)) {
+    handleLimitInputClear(towLimEl);
+    return;
+  }
 
   const k    = parseValOrNaN('k');
   const taxi = parseValOrNaN('taxi');
   const rfl  = parseValOrNaN('rfl');
   if (isNaN(k) || isNaN(taxi) || isNaN(rfl) || k <= 0) return;
 
-  // On veut garder la structure LAW = ZFW + RFL, TOW = LAW * K [web:213][web:236]
-  // 1) LAW_max = TOW_limit / K
+  // 1) LAW_max = TOW_limit / K [web:236]
   const lawMax = towLimit / k;
 
-  // 2) ZFW_max = LAW_max - RFL
+  // 2) ZFW_max = LAW_max - RFL [web:221]
   let zfwMax = lawMax - rfl;
   if (zfwMax < 0) zfwMax = 0;
 
-  // 3) TOW_limit = ZFW_max + Block_new - Taxi -> Block_new = TOW_limit - ZFW_max + Taxi
+  // 3) Block_new pour respecter TOW_limit
+  // TOW_limit = ZFW_max + Block_new - Taxi -> Block_new = TOW_limit - ZFW_max + Taxi
   let blockNew = towLimit - zfwMax + taxi;
   if (blockNew < 0) blockNew = 0;
 
-  document.getElementById('zfw').value   = zfwMax.toFixed(1);
-  document.getElementById('block').value = blockNew.toFixed(1);
+  zfwEl.value   = zfwMax.toFixed(1);
+  blockEl.value = blockNew.toFixed(1);
 
-  // Recalcule avec la logique standard (Trip, TOW, LAW)
+  // marquer les champs impactés
+  zfwEl.classList.add('state-limited');
+  blockEl.classList.add('state-limited');
+
+  // recalcul standard
   document.getElementById('btnCalc').click();
 }
 
-document.getElementById('towLimit').addEventListener('blur', applyTowLimit);
-document.getElementById('towLimit').addEventListener('keydown', (e) => {
+towLimEl.addEventListener('blur', applyTowLimit);
+towLimEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
     applyTowLimit();
@@ -380,33 +435,41 @@ document.getElementById('towLimit').addEventListener('keydown', (e) => {
 // Base : LAW = TOW / K et LAW = ZFW + RFL [web:213][web:236]
 function applyLawLimit() {
   const lawLimit = parseValOrNaN('lawLimit');
-  if (isNaN(lawLimit)) return;
+  if (isNaN(lawLimit)) {
+    handleLimitInputClear(lawLimEl);
+    return;
+  }
 
   const k    = parseValOrNaN('k');
   const taxi = parseValOrNaN('taxi');
   const rfl  = parseValOrNaN('rfl');
   if (isNaN(k) || isNaN(taxi) || isNaN(rfl) || k <= 0) return;
 
-  // 1) TOW_max = LAW_limit * K
+  // 1) TOW_max = LAW_limit * K [web:236]
   const towMax = lawLimit * k;
 
-  // 2) ZFW_max = LAW_limit - RFL
+  // 2) ZFW_max = LAW_limit - RFL [web:221]
   let zfwMax = lawLimit - rfl;
   if (zfwMax < 0) zfwMax = 0;
 
-  // 3) TOW_max = ZFW_max + Block_new - Taxi -> Block_new = TOW_max - ZFW_max + Taxi
+  // 3) Block_new pour respecter TOW_max
+  // TOW_max = ZFW_max + Block_new - Taxi -> Block_new = TOW_max - ZFW_max + Taxi
   let blockNew = towMax - zfwMax + taxi;
   if (blockNew < 0) blockNew = 0;
 
-  document.getElementById('zfw').value   = zfwMax.toFixed(1);
-  document.getElementById('block').value = blockNew.toFixed(1);
+  zfwEl.value   = zfwMax.toFixed(1);
+  blockEl.value = blockNew.toFixed(1);
 
-  // Recalcule avec la logique standard
+  // marquer les champs impactés
+  zfwEl.classList.add('state-limited');
+  blockEl.classList.add('state-limited');
+
+  // recalcul standard
   document.getElementById('btnCalc').click();
 }
 
-document.getElementById('lawLimit').addEventListener('blur', applyLawLimit);
-document.getElementById('lawLimit').addEventListener('keydown', (e) => {
+lawLimEl.addEventListener('blur', applyLawLimit);
+lawLimEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
     applyLawLimit();
@@ -424,15 +487,16 @@ document.getElementById('btnReset').addEventListener('click', function () {
     }
   });
 
-  document.getElementById('zfw').className   = 'state-adjust';
-  document.getElementById('rfl').className   = 'state-adjust';
-  document.getElementById('block').className = 'state-adjust';
-  document.getElementById('k').className     = 'state-edit';
-  document.getElementById('taxi').className  = 'state-edit';
+  zfwEl.className   = 'state-adjust';
+  rflEl.className   = 'state-adjust';
+  blockEl.className = 'state-adjust';
+  kEl.className     = 'state-edit';
+  taxiEl.className  = 'state-edit';
 
-  ['mlw','mtow','trip'].forEach(id => {
-    document.getElementById(id).textContent = '–';
-  });
+  zfwEl.classList.remove('state-limited');
+  blockEl.classList.remove('state-limited');
+
+  clearResults();
 });
 
 // service worker inchangé
