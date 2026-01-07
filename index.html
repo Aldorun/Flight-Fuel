@@ -85,10 +85,14 @@
       color: #7fffb0;
     }
 
-    /* champs impactés par une limitation */
-    .state-limited {
+    /* champs impactés par une limitation dominante */
+    .state-limited-tow {
       border-color: #ff9f1a !important;
       background-color: #2a1e08 !important;
+    }
+    .state-limited-law {
+      border-color: #4ec3ff !important;
+      background-color: #082234 !important;
     }
 
     .grid-2 {
@@ -146,7 +150,7 @@
       color: #ffffff;
     }
 
-    /* Champs de limitation TOW / LAW visibles */
+    /* Champs de limitation TOW / LAW */
     .limit-input {
       max-width: 140px;
       padding: 8px 10px;
@@ -157,9 +161,32 @@
       font-size: 15px;
       font-weight: 700;
     }
+    .limit-input-law {
+      border-color: #4ec3ff;
+      background-color: #082234;
+    }
     .limit-input::placeholder {
       color: #ffcf80;
       font-weight: 500;
+    }
+    .limit-input-law::placeholder {
+      color: #a0e3ff;
+      font-weight: 500;
+    }
+    .limit-input-muted {
+      opacity: 0.6;
+      border-style: dashed;
+    }
+
+    .limit-info {
+      margin-top: 8px;
+      font-size: 13px;
+      opacity: 0.8;
+      line-height: 1.3;
+    }
+
+    .limit-info span {
+      font-weight: 600;
     }
 
     .footer {
@@ -181,7 +208,7 @@
         font-size: 17px;
       }
       input {
-        font-size: 18px; /* >=16px pour limiter le zoom auto iOS [web:283][web:292] */
+        font-size: 18px;
       }
     }
   </style>
@@ -241,8 +268,12 @@
     <div class="result-row">
       <div class="result-label">LAW (T)</div>
       <div class="result-value state-result-value" id="mlw">–</div>
-      <input id="lawLimit" class="limit-input" type="number" step="0.1"
+      <input id="lawLimit" class="limit-input limit-input-law" type="number" step="0.1"
              inputmode="decimal" placeholder="Lim LAW (T)">
+    </div>
+
+    <div class="limit-info" id="limitInfo">
+      <!-- Texte dynamique : ZFW Max / Block Fuel Max / limitation dominante -->
     </div>
   </div>
 
@@ -279,6 +310,7 @@ const mlwEl     = document.getElementById('mlw');
 const tripEl    = document.getElementById('trip');
 const towLimEl  = document.getElementById('towLimit');
 const lawLimEl  = document.getElementById('lawLimit');
+const limitInfoEl = document.getElementById('limitInfo');
 
 function clearResults() {
   mtowEl.textContent = '–';
@@ -286,14 +318,22 @@ function clearResults() {
   tripEl.textContent = '–';
 }
 
+function resetLimitStyling() {
+  zfwEl.classList.remove('state-limited-tow', 'state-limited-law');
+  blockEl.classList.remove('state-limited-tow', 'state-limited-law');
+  rflEl.classList.remove('state-limited-law');
+  towLimEl.classList.remove('limit-input-muted');
+  lawLimEl.classList.remove('limit-input-muted');
+}
+
 function clearLimitsAndDerived() {
   towLimEl.value = '';
   lawLimEl.value = '';
   zfwEl.value   = '';
   blockEl.value = '';
-  zfwEl.classList.remove('state-limited');
-  blockEl.classList.remove('state-limited');
+  resetLimitStyling();
   clearResults();
+  limitInfoEl.textContent = '';
   hasCalculated = false;
 }
 
@@ -305,7 +345,7 @@ function handleLimitInputClear(el) {
   }
 }
 
-// RFL / Block : si l’un change, on efface l’autre ET les limites (dès le premier caractère) [web:271][web:279]
+// RFL / Block : si l’un change, on efface l’autre ET les limites [web:221]
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -314,8 +354,8 @@ function handleLimitInputClear(el) {
     otherEl.value = '';
     towLimEl.value = '';
     lawLimEl.value = '';
-    zfwEl.classList.remove('state-limited');
-    blockEl.classList.remove('state-limited');
+    resetLimitStyling();
+    limitInfoEl.textContent = '';
   });
 });
 
@@ -327,13 +367,11 @@ zfwEl.addEventListener('input', () => {
   clearLimitsAndDerived();
 });
 
-// K / Taxi / RFL / Block : si on change après une limitation, on efface les limites visuelles
+// K / Taxi / RFL / Block : si on change après une limitation, on efface le style limites
 [kEl, taxiEl, rflEl, blockEl].forEach(el => {
   el.addEventListener('input', () => {
-    towLimEl.value = '';
-    lawLimEl.value = '';
-    zfwEl.classList.remove('state-limited');
-    blockEl.classList.remove('state-limited');
+    resetLimitStyling();
+    limitInfoEl.textContent = '';
   });
 });
 
@@ -359,10 +397,10 @@ document.getElementById('btnCalc').addEventListener('click', function () {
   if (!isNaN(rfl)) {
     const law  = zfw + rfl;
     const tow  = law * k;
-    const trip = tow - law; // Trip = TOW - LAW [web:221]
+    const trip = tow - law;
 
     if (isNaN(block)) {
-      block = taxi + trip + rfl; // Block = Taxi + Trip + RFL [web:221]
+      block = taxi + trip + rfl;
       blockEl.value = block.toFixed(1);
     }
 
@@ -392,88 +430,126 @@ document.getElementById('btnCalc').addEventListener('click', function () {
   alert('Renseigne soit RFL, soit Block (une seule des deux).');
 });
 
-// ----- Limitation TOW -----
-// Formule : TOW = ZFW + Block - Taxi [web:236]
-function applyTowLimit() {
-  const towLimit = parseValOrNaN('towLimit');
-  if (isNaN(towLimit)) {
-    handleLimitInputClear(towLimEl);
+// --- Fonctions helpers limites ---
+
+// TOW_max issu de la limitation TOW (c'est directement towLimit si cohérent)
+function computeTowFromTowLimit() {
+  const towLim = parseValOrNaN('towLimit');
+  if (isNaN(towLim)) return NaN;
+  return towLim;
+}
+
+// TOW_max issu de la limitation LAW : LAW_limit × K [web:221][web:236]
+function computeTowFromLawLimit() {
+  const lawLim = parseValOrNaN('lawLimit');
+  const k      = parseValOrNaN('k');
+  if (isNaN(lawLim) || isNaN(k) || k <= 0) return NaN;
+  return lawLim * k;
+}
+
+// Applique la logique en tenant compte des deux limites si présentes
+function applyLimits() {
+  resetLimitStyling();
+  limitInfoEl.textContent = '';
+
+  const zfw   = parseValOrNaN('zfw');
+  const k     = parseValOrNaN('k');
+  const taxi  = parseValOrNaN('taxi');
+  let   rfl   = parseValOrNaN('rfl');
+
+  if (isNaN(zfw) || isNaN(k) || isNaN(taxi) || k <= 0 || isNaN(rfl)) {
     return;
   }
 
-  const k    = parseValOrNaN('k');
-  const taxi = parseValOrNaN('taxi');
-  const rfl  = parseValOrNaN('rfl');
-  if (isNaN(k) || isNaN(taxi) || isNaN(rfl) || k <= 0) return;
+  const towFromTow = computeTowFromTowLimit();   // peut être NaN
+  const towFromLaw = computeTowFromLawLimit();   // peut être NaN
 
-  // 1) LAW_max = TOW_limit / K [web:236]
-  const lawMax = towLimit / k;
+  const hasTowLim = !isNaN(towFromTow);
+  const hasLawLim = !isNaN(towFromLaw);
 
-  // 2) ZFW_max = LAW_max - RFL [web:221]
+  if (!hasTowLim && !hasLawLim) {
+    return; // aucune limite active
+  }
+
+  // Cas 1 : seulement TOW_limit
+  if (hasTowLim && !hasLawLim) {
+    applyTowOnly(towFromTow, zfw, k, taxi, rfl);
+    return;
+  }
+
+  // Cas 2 : seulement LAW_limit
+  if (!hasTowLim && hasLawLim) {
+    applyLawOnly(towFromLaw, zfw, k, taxi, rfl);
+    return;
+  }
+
+  // Cas 3 : les deux sont présentes -> on prend la TOW la plus contraignante
+  const towMaxTow = towFromTow;
+  const towMaxLaw = towFromLaw;
+
+  if (towMaxLaw <= towMaxTow) {
+    // LAW_limit est dominante
+    applyLawOnly(towMaxLaw, zfw, k, taxi, rfl, /*lawDominant=*/true);
+    // rendre TOW_limit visuellement secondaire
+    towLimEl.classList.add('limit-input-muted');
+  } else {
+    // TOW_limit est dominante
+    applyTowOnly(towMaxTow, zfw, k, taxi, rfl, /*towDominant=*/true);
+    // rendre LAW_limit visuellement secondaire
+    lawLimEl.classList.add('limit-input-muted');
+  }
+}
+
+// --- Application logique TOW seule/dominante ---
+function applyTowOnly(towMax, zfw, k, taxi, rfl, towDominant = true) {
+  // 1) LAW_max = TOW_max / K
+  const lawMax = towMax / k;
+
+  // 2) ZFW_max = LAW_max - RFL
   let zfwMax = lawMax - rfl;
   if (zfwMax < 0) zfwMax = 0;
 
-  // 3) Block_new pour respecter TOW_limit
-  let blockNew = towLimit - zfwMax + taxi;
+  // 3) Block_new pour respecter TOW_max
+  let blockNew = towMax - zfwMax + taxi;
   if (blockNew < 0) blockNew = 0;
 
   zfwEl.value   = zfwMax.toFixed(1);
   blockEl.value = blockNew.toFixed(1);
 
-  zfwEl.classList.add('state-limited');
-  blockEl.classList.add('state-limited');
+  if (towDominant) {
+    zfwEl.classList.add('state-limited-tow');
+    blockEl.classList.add('state-limited-tow');
+    limitInfoEl.innerHTML = '<span>ZFW Max</span> appliqué (limitation TOW).';
+  }
 
   document.getElementById('btnCalc').click();
 }
 
-towLimEl.addEventListener('blur', applyTowLimit);
-towLimEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    applyTowLimit();
-  }
-});
-
-// ----- Limitation LAW -----
-// Si LAW_limit < LAW_actuelle -> réduction ZFW max + ajustement Block.
-// Si LAW_limit > LAW_actuelle -> ZFW inchangé, RFL augmenté, Block ajusté. [web:221][web:236]
-function applyLawLimit() {
-  const lawLimit = parseValOrNaN('lawLimit');
-  if (isNaN(lawLimit)) {
-    handleLimitInputClear(lawLimEl);
-    return;
-  }
-
-  const k    = parseValOrNaN('k');
-  const taxi = parseValOrNaN('taxi');
-  const rfl  = parseValOrNaN('rfl');
-  const zfw  = parseValOrNaN('zfw');
-  if (isNaN(k) || isNaN(taxi) || isNaN(rfl) || isNaN(zfw) || k <= 0) return;
-
-  const lawCurrent = zfw + rfl; // LAW_actuelle [web:221]
+// --- Application logique LAW seule/dominante ---
+// towMax = TOW_max issu de LAW_limit (LAW_limit × K)
+function applyLawOnly(towMax, zfw, k, taxi, rfl, lawDominant = true) {
+  const lawLimit = towMax / k; // LAW_limit correspondante
 
   let zfwNew   = zfw;
   let rflNew   = rfl;
   let blockNew;
 
+  const lawCurrent = zfw + rfl;
+
   if (lawLimit < lawCurrent) {
     // Limitation plus faible -> réduction ZFW max
-    const towMax = lawLimit * k;      // [web:236]
-    let zfwMax   = lawLimit - rfl;    // [web:221]
+    let zfwMax = lawLimit - rfl;
     if (zfwMax < 0) zfwMax = 0;
     zfwNew = zfwMax;
 
     blockNew = towMax - zfwMax + taxi;
     if (blockNew < 0) blockNew = 0;
-
   } else {
-    // Limite plus haute -> ZFW inchangé, on augmente RFL + Block
-    // LAW_limit = ZFW + RFL_new -> RFL_new = LAW_limit - ZFW [web:221]
+    // Limite plus haute -> ZFW inchangé, on augmente RFL + Block [web:221]
     rflNew = lawLimit - zfw;
     if (rflNew < 0) rflNew = 0;
 
-    const towNew = lawLimit * k;      // [web:236]
-    blockNew = towNew - zfw + taxi;
+    blockNew = towMax - zfw + taxi;
     if (blockNew < 0) blockNew = 0;
   }
 
@@ -481,17 +557,49 @@ function applyLawLimit() {
   rflEl.value   = rflNew.toFixed(1);
   blockEl.value = blockNew.toFixed(1);
 
-  zfwEl.classList.add('state-limited');
-  blockEl.classList.add('state-limited');
+  if (lawDominant) {
+    zfwEl.classList.add('state-limited-law');
+    rflEl.classList.add('state-limited-law');
+    blockEl.classList.add('state-limited-law');
+    limitInfoEl.innerHTML = '<span>Block Fuel Max</span> appliqué (limitation LAW).';
+  }
 
   document.getElementById('btnCalc').click();
 }
 
-lawLimEl.addEventListener('blur', applyLawLimit);
+// Handlers limites
+
+function onTowLimitChange() {
+  const val = towLimEl.value.trim();
+  if (val === '') {
+    handleLimitInputClear(towLimEl);
+    return;
+  }
+  applyLimits();
+}
+
+function onLawLimitChange() {
+  const val = lawLimEl.value.trim();
+  if (val === '') {
+    handleLimitInputClear(lawLimEl);
+    return;
+  }
+  applyLimits();
+}
+
+towLimEl.addEventListener('blur', onTowLimitChange);
+towLimEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    onTowLimitChange();
+  }
+});
+
+lawLimEl.addEventListener('blur', onLawLimitChange);
 lawLimEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    applyLawLimit();
+    onLawLimitChange();
   }
 });
 
@@ -512,10 +620,9 @@ document.getElementById('btnReset').addEventListener('click', function () {
   kEl.className     = 'state-edit';
   taxiEl.className  = 'state-edit';
 
-  zfwEl.classList.remove('state-limited');
-  blockEl.classList.remove('state-limited');
-
+  resetLimitStyling();
   clearResults();
+  limitInfoEl.textContent = '';
 });
 
 // service worker inchangé
