@@ -293,6 +293,11 @@ function fmt1(x) {
   if (isNaN(x)) return '–';
   return x.toFixed(1);
 }
+// arrondi au dixième supérieur
+function ceil1(x) {
+  if (isNaN(x)) return NaN;
+  return Math.ceil(x * 10) / 10;
+}
 function setLocked(id, locked) {
   const el = document.getElementById(id);
   el.readOnly = locked;
@@ -345,7 +350,7 @@ function handleLimitInputClear(el) {
   }
 }
 
-// RFL / Block : si l’un change, on efface l’autre ET les limites [web:221]
+// RFL / Block : si l’un change, on efface l’autre ET les limites
 ['rfl','block'].forEach(id => {
   const el = document.getElementById(id);
   el.addEventListener('input', () => {
@@ -401,12 +406,13 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 
     if (isNaN(block)) {
       block = taxi + trip + rfl;
+      block = ceil1(block);
       blockEl.value = block.toFixed(1);
     }
 
     rflEl.value = rfl.toFixed(1);
     mlwEl.textContent  = fmt1(law);
-    mtowEl.textContent = fmt1(tow);
+    mtowEl.textContent = fmt1(ceil1(tow)); // TOW arrondi au 0,1 supérieur
     tripEl.textContent = fmt1(trip);
     return;
   }
@@ -422,7 +428,7 @@ document.getElementById('btnCalc').addEventListener('click', function () {
     const trip = tow - law;
 
     mlwEl.textContent  = fmt1(law);
-    mtowEl.textContent = fmt1(tow);
+    mtowEl.textContent = fmt1(ceil1(tow)); // TOW arrondi
     tripEl.textContent = fmt1(trip);
     return;
   }
@@ -432,14 +438,13 @@ document.getElementById('btnCalc').addEventListener('click', function () {
 
 // --- Fonctions helpers limites ---
 
-// TOW_max issu de la limitation TOW (c'est directement towLimit si cohérent)
 function computeTowFromTowLimit() {
   const towLim = parseValOrNaN('towLimit');
   if (isNaN(towLim)) return NaN;
   return towLim;
 }
 
-// TOW_max issu de la limitation LAW : LAW_limit × K [web:221][web:236]
+// TOW_max issu de la limitation LAW : LAW_limit × K
 function computeTowFromLawLimit() {
   const lawLim = parseValOrNaN('lawLimit');
   const k      = parseValOrNaN('k');
@@ -461,57 +466,47 @@ function applyLimits() {
     return;
   }
 
-  const towFromTow = computeTowFromTowLimit();   // peut être NaN
-  const towFromLaw = computeTowFromLawLimit();   // peut être NaN
+  const towFromTow = computeTowFromTowLimit();
+  const towFromLaw = computeTowFromLawLimit();
 
   const hasTowLim = !isNaN(towFromTow);
   const hasLawLim = !isNaN(towFromLaw);
 
   if (!hasTowLim && !hasLawLim) {
-    return; // aucune limite active
+    return;
   }
 
-  // Cas 1 : seulement TOW_limit
   if (hasTowLim && !hasLawLim) {
     applyTowOnly(towFromTow, zfw, k, taxi, rfl);
     return;
   }
 
-  // Cas 2 : seulement LAW_limit
   if (!hasTowLim && hasLawLim) {
     applyLawOnly(towFromLaw, zfw, k, taxi, rfl);
     return;
   }
 
-  // Cas 3 : les deux sont présentes -> on prend la TOW la plus contraignante
   const towMaxTow = towFromTow;
   const towMaxLaw = towFromLaw;
 
   if (towMaxLaw <= towMaxTow) {
-    // LAW_limit est dominante
-    applyLawOnly(towMaxLaw, zfw, k, taxi, rfl, /*lawDominant=*/true);
-    // rendre TOW_limit visuellement secondaire
+    applyLawOnly(towMaxLaw, zfw, k, taxi, rfl, true);
     towLimEl.classList.add('limit-input-muted');
   } else {
-    // TOW_limit est dominante
-    applyTowOnly(towMaxTow, zfw, k, taxi, rfl, /*towDominant=*/true);
-    // rendre LAW_limit visuellement secondaire
+    applyTowOnly(towMaxTow, zfw, k, taxi, rfl, true);
     lawLimEl.classList.add('limit-input-muted');
   }
 }
 
 // --- Application logique TOW seule/dominante ---
 function applyTowOnly(towMax, zfw, k, taxi, rfl, towDominant = true) {
-  // 1) LAW_max = TOW_max / K
   const lawMax = towMax / k;
-
-  // 2) ZFW_max = LAW_max - RFL
   let zfwMax = lawMax - rfl;
   if (zfwMax < 0) zfwMax = 0;
 
-  // 3) Block_new pour respecter TOW_max
   let blockNew = towMax - zfwMax + taxi;
   if (blockNew < 0) blockNew = 0;
+  blockNew = ceil1(blockNew);
 
   zfwEl.value   = zfwMax.toFixed(1);
   blockEl.value = blockNew.toFixed(1);
@@ -526,9 +521,8 @@ function applyTowOnly(towMax, zfw, k, taxi, rfl, towDominant = true) {
 }
 
 // --- Application logique LAW seule/dominante ---
-// towMax = TOW_max issu de LAW_limit (LAW_limit × K)
 function applyLawOnly(towMax, zfw, k, taxi, rfl, lawDominant = true) {
-  const lawLimit = towMax / k; // LAW_limit correspondante
+  const lawLimit = towMax / k;
 
   let zfwNew   = zfw;
   let rflNew   = rfl;
@@ -537,7 +531,6 @@ function applyLawOnly(towMax, zfw, k, taxi, rfl, lawDominant = true) {
   const lawCurrent = zfw + rfl;
 
   if (lawLimit < lawCurrent) {
-    // Limitation plus faible -> réduction ZFW max
     let zfwMax = lawLimit - rfl;
     if (zfwMax < 0) zfwMax = 0;
     zfwNew = zfwMax;
@@ -545,13 +538,14 @@ function applyLawOnly(towMax, zfw, k, taxi, rfl, lawDominant = true) {
     blockNew = towMax - zfwMax + taxi;
     if (blockNew < 0) blockNew = 0;
   } else {
-    // Limite plus haute -> ZFW inchangé, on augmente RFL + Block [web:221]
     rflNew = lawLimit - zfw;
     if (rflNew < 0) rflNew = 0;
 
     blockNew = towMax - zfw + taxi;
     if (blockNew < 0) blockNew = 0;
   }
+
+  blockNew = ceil1(blockNew);
 
   zfwEl.value   = zfwNew.toFixed(1);
   rflEl.value   = rflNew.toFixed(1);
