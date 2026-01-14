@@ -301,6 +301,14 @@ function ceil1strict(x) {
   }
   return Math.ceil(val * 10) / 10;
 }
+// normalise l'affichage d'un input avec un point et n décimales
+function normalizeInputValue(id, decimals = 1) {
+  const el  = document.getElementById(id);
+  const num = parseValOrNaN(id);
+  if (isNaN(num)) return;
+  el.value = num.toFixed(decimals);
+}
+
 function setLocked(id, locked) {
   const el = document.getElementById(id);
   el.readOnly = locked;
@@ -383,11 +391,11 @@ zfwEl.addEventListener('input', () => {
 });
 
 document.getElementById('btnCalc').addEventListener('click', function () {
-  const zfw   = parseValOrNaN('zfw');
-  const k     = parseValOrNaN('k');
-  const taxi  = parseValOrNaN('taxi');
-  let   rfl   = parseValOrNaN('rfl');
-  let   block = parseValOrNaN('block');
+  let zfw   = parseValOrNaN('zfw');
+  let k     = parseValOrNaN('k');
+  let taxi  = parseValOrNaN('taxi');
+  let rfl   = parseValOrNaN('rfl');
+  let block = parseValOrNaN('block');
 
   if (isNaN(zfw) || isNaN(k) || isNaN(taxi)) {
     alert('Renseigne ZFW, K et Taxi, puis soit RFL soit Block.');
@@ -395,6 +403,20 @@ document.getElementById('btnCalc').addEventListener('click', function () {
   }
 
   hasCalculated = true;
+
+  // normaliser l'affichage des entrées (point décimal partout)
+  normalizeInputValue('zfw');
+  normalizeInputValue('k', 3);
+  normalizeInputValue('taxi');
+  if (!isNaN(rfl))   normalizeInputValue('rfl');
+  if (!isNaN(block)) normalizeInputValue('block');
+
+  // relire après normalisation
+  zfw   = parseValOrNaN('zfw');
+  k     = parseValOrNaN('k');
+  taxi  = parseValOrNaN('taxi');
+  rfl   = parseValOrNaN('rfl');
+  block = parseValOrNaN('block');
 
   setLocked('k', true);
   setLocked('taxi', true);
@@ -569,6 +591,8 @@ function onTowLimitChange() {
     handleLimitInputClear(towLimEl);
     return;
   }
+  // normaliser aussi la limite TOW
+  normalizeInputValue('towLimit');
   applyLimits();
 }
 
@@ -578,6 +602,8 @@ function onLawLimitChange() {
     handleLimitInputClear(lawLimEl);
     return;
   }
+  // normaliser aussi la limite LAW
+  normalizeInputValue('lawLimit');
   applyLimits();
 }
 
